@@ -2,6 +2,26 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api"
 import axios from "axios";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+// helper function flies map to new coordinates
+function RecenterMap({ coords }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(coords, 13);
+  }, [coords]);
+  return null;
+}
+
+
 
 const TOKEN = import.meta.env.VITE_IPINFO_TOKEN;
 
@@ -13,7 +33,7 @@ function Home() {
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Load logged user IP on first load
+  // load logged user IP on first load
   useEffect(() => {
     fetchLoggedUserIP();
     loadHistory();
@@ -119,6 +139,14 @@ function Home() {
     }
   };
 
+  // turning lat, lng strings into [lat, lang] numbers
+  const getCoords = () => {
+    if (!geoData || !geoData.loc) return [14.5995, 120.9842]; //manila coordinates
+    return geoData.loc.split(',').map(Number);
+  };
+
+  const position = getCoords();
+
   return (
     <div>
       <h2>IP Geolocation</h2>
@@ -148,6 +176,7 @@ function Home() {
       )}
 
       <h3>Search History</h3>
+      <p>The IP Coordinates w/ names are clickable.</p>
       {selectedIds.length > 0 && (
         <button onClick={deleteSelected} style={{ marginBottom: "10px", color: "red" }}>
           Delete Selected ({selectedIds.length})
@@ -171,12 +200,29 @@ function Home() {
         ))}
       </ul>
       <button 
-          onClick={handleLogout} 
-          style={{ backgroundColor: "#ff4d4d", color: "white", padding: "8px 16px", border: "none", borderRadius: "4px", cursor: "pointer" }}
-        >
-          Logout
-        </button>
-    </div>
+        onClick={handleLogout} 
+        style={{ backgroundColor: "#ff4d4d", color: "white", padding: "8px 16px", border: "none", borderRadius: "4px", cursor: "pointer" }}
+      >
+        Logout
+      </button>
+      {/* THE MAP SECTION */}
+      <div style={{ flex: 1, height: '500px', border: '1px solid #ccc' }}>
+        {geoData && (
+          <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            <Marker position={position}>
+              <Popup>
+                {geoData.ip} <br /> {geoData.city}, {geoData.country}
+              </Popup>
+            </Marker>
+            <RecenterMap coords={position} />
+          </MapContainer>
+        )}
+      </div>
+    </div>    
   );
 }
 
