@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api"
 import axios from "axios";
 
 const TOKEN = import.meta.env.VITE_IPINFO_TOKEN;
@@ -10,12 +11,26 @@ function Home() {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Load logged user IP on first load
   useEffect(() => {
     fetchLoggedUserIP();
+    loadHistory();
   }, []);
 
+
+  const loadHistory = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get("/history", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setHistory(res.data);
+    } catch (err) {
+      console.error("Failed to load history", err);
+    }
+  };
   const fetchLoggedUserIP = async () => {
     try {
         const res = await axios.get(`https://ipinfo.io/geo?token=${TOKEN}`);
@@ -36,15 +51,26 @@ function Home() {
 
     try {
       const res = await axios.get(`https://ipinfo.io/${ip}?token=${TOKEN}`);
-
       setGeoData(res.data);
+      
+      //save to db
+      const token = localStorage.getItem("token");
+      await api.post("/history", {
+        ip_address: res.data.ip,
+        city: res.data.city,
+        region: res.data.region,
+        country: res.data.country,
+        location: res.data.loc
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
-      // Add to history
-      setHistory(prev => [...prev, ip]);
-
+      loadHistory();
       setIp("");
     } catch (err) {
-      setError("IP not found.");
+      setError("Search failed. IP not found.");
     }
   };
 
@@ -67,15 +93,32 @@ function Home() {
   };
 
   const handleLogout = () => {
-    // 1. Remove the token from storage
     localStorage.removeItem("token");
-    
-    // 2. Redirect the user to the login page
     navigate("/");
-    
-    // 3. Optional: Force a refresh to clear all states
     window.location.reload();
   };
+  
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      const token = localStorage.getItem("token");
+      await api.delete("/history", {
+        data: { ids: selectedIds },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedIds([]); 
+      loadHistory();     
+    } catch (err) {
+      alert("Delete failed.");
+    }
+  };
+
   return (
     <div>
       <h2>IP Geolocation</h2>
@@ -105,14 +148,24 @@ function Home() {
       )}
 
       <h3>Search History</h3>
+      {selectedIds.length > 0 && (
+        <button onClick={deleteSelected} style={{ marginBottom: "10px", color: "red" }}>
+          Delete Selected ({selectedIds.length})
+        </button>
+      )}
       <ul>
-        {history.map((item, index) => (
-          <li key={index}>
+        {history.map((item) => (
+          <li key={item.id} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <input 
+              type="checkbox" 
+              checked={selectedIds.includes(item.id)}
+              onChange={() => toggleSelect(item.id)} 
+            />
             <span
               style={{ cursor: "pointer", color: "blue" }}
-              onClick={() => handleHistoryClick(item)}
+              onClick={() => handleHistoryClick(item.ip_address)}
             >
-              {item}
+              {item.ip_address} - {item.city}
             </span>
           </li>
         ))}
