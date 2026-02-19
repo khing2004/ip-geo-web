@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const TOKEN = import.meta.env.VITE_IPINFO_TOKEN;
@@ -8,6 +9,7 @@ function Home() {
   const [geoData, setGeoData] = useState(null);
   const [history, setHistory] = useState([]);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   // Load logged user IP on first load
   useEffect(() => {
@@ -64,6 +66,16 @@ function Home() {
     return regex.test(ip);
   };
 
+  const handleLogout = () => {
+    // 1. Remove the token from storage
+    localStorage.removeItem("token");
+    
+    // 2. Redirect the user to the login page
+    navigate("/");
+    
+    // 3. Optional: Force a refresh to clear all states
+    window.location.reload();
+  };
   return (
     <div>
       <h2>IP Geolocation</h2>
@@ -105,6 +117,12 @@ function Home() {
           </li>
         ))}
       </ul>
+      <button 
+          onClick={handleLogout} 
+          style={{ backgroundColor: "#ff4d4d", color: "white", padding: "8px 16px", border: "none", borderRadius: "4px", cursor: "pointer" }}
+        >
+          Logout
+        </button>
     </div>
   );
 }
