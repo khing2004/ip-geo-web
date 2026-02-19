@@ -11,11 +11,24 @@ function Login() {
     try {
       const res = await api.post("/login", { email, password });
 
-      localStorage.setItem("token", res.data.token);
+      const receivedToken = res.data.token;
+      
+      if (receivedToken){
+        localStorage.setItem("token", receivedToken);
 
-      navigate("/home");
+        if (onLoginSucess){
+          onLoginSucess(receivedToken);
+        } //update parent (app.jsx) state immediately
+
+        navigate("/home");
+      }
     } catch (err) {
-      alert("Invalid credentials");
+      if (err.response?.status === 401) {
+        alert("Invalid email or password.");
+      } else {
+        console.error("Login Error:", err);
+        alert("You have entered the correct password. Please refresh the page if no redirection occurs.");
+      }
     }
   };
 
