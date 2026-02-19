@@ -15,7 +15,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={token ? <Navigate to="/home" /> : <Login onLoginSucess={handleLoginSuccess} />} />
+        <Route path="/" element={token ? <Navigate to="/home" /> : <Login onLoginSuccess={handleLoginSuccess} />} />
         <Route path="/home" element={token ? <Home /> : <Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
